@@ -1,18 +1,51 @@
 from rest_framework import serializers
-from station.models import Bus
-from typing import Any
+from station.models import Bus, Trip, Facility
 
 
-class BusSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
-    info = serializers.CharField(required=False, max_length=255)
-    num_seats = serializers.IntegerField(required=True)
+class FacilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Facility
+        fields = ("id", "name")
 
-    def create(self, validated_data: Any) -> Bus:
-        return Bus.objects.create(**validated_data)
 
-    def update(self, instance: Bus, validated_data: Any) -> Bus:
-        instance.info = validated_data.get('info', instance.info)
-        instance.num_seats = validated_data.get('num_seats', instance.num_seats)
-        instance.save()
-        return instance
+class BusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bus
+        fields = ("id", "info", "num_seats", "is_small", "facilities")
+
+
+class BusListSerializer(BusSerializer):
+    facilities = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field="name"
+    )
+
+
+class BusRetrieveSerializer(BusSerializer):
+    facilities = FacilitySerializer(many=True)
+
+
+class TripSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Trip
+        fields = ("id", "source", "destination", "departure", "bus")
+
+
+class TripListSerializer(serializers.ModelSerializer):
+    bus_info = serializers.CharField(source="bus.info", read_only=True)
+    bus_num_seats = serializers.IntegerField(source="bus.num_seats", read_only=True)
+
+    class Meta:
+        model = Trip
+        fields = ("id",
+                  "source",
+                  "destination",
+                  "departure",
+                  "bus_info",
+                  "bus_num_seats")
+
+
+class TripRetriveSerializer(TripListSerializer):
+    bus = BusRetrieveSerializer(many=False, read_only=True)
