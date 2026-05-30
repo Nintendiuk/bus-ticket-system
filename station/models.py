@@ -6,7 +6,7 @@ from app import settings
 
 
 class Facility(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
 
     class Meta:
         verbose_name_plural = "facilities"
@@ -51,25 +51,27 @@ class Trip(models.Model):
 
 class Ticket(models.Model):
     seat = models.IntegerField()
-    trip = models.ForeignKey("Trip", on_delete=models.CASCADE)
-    order = models.ForeignKey("Order", on_delete=models.CASCADE)
+    trip = models.ForeignKey("Trip", on_delete=models.CASCADE, related_name="tickets")
+    order = models.ForeignKey("Order", on_delete=models.CASCADE, related_name="tickets")
 
     class Meta:
-        constraints = [
-            UniqueConstraint(fields=["seat", "trip"], name="unique_seat_trip")
-        ]
+        unique_together = ("seat", "trip")
+        ordering = ("seat",)
 
     def __str__(self):
         return f"{self.trip} - (seat - {self.seat})"
 
+    @staticmethod
+    def validate_seat(seat: int, num_seats: int, error_to_raise):
+        if not (1 <= seat <= num_seats):
+            raise error_to_raise(
+                {
+                    "seat": f"seat must be in range [1, {num_seats}], not {seat}"
+                }
+            )
+
     def clean(self):
-        if self.trip_id:
-            if not (1 <= self.seat <= self.trip.bus.num_seats):
-                raise ValidationError({
-                    "seat": f"seat must be in range [1, {self.trip.bus.num_seats}], not {self.seat}"
-                })
-        else:
-            raise ValidationError({"trip": "A ticket must be associated with a trip."})
+        Ticket.validate_seat(self.seat, self.trip.bus.num_seats, ValueError)
 
     def save(self, *args, **kwargs):
         self.full_clean()
