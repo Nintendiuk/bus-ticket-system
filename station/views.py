@@ -1,7 +1,10 @@
 from django.db.models import Count, F
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAdminUser
 
 from station.models import Bus, Trip, Facility, Order
+from station.permissions import IsAdminAllORIsAuthenticatedOrReadOnly
 from station.serializers import (BusSerializer,
                                  TripSerializer,
                                  TripListSerializer,
@@ -14,6 +17,8 @@ from station.serializers import (BusSerializer,
 class FacilityViewSet(viewsets.ModelViewSet):
     queryset = Facility.objects.all()
     serializer_class = FacilitySerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAdminAllORIsAuthenticatedOrReadOnly,)
 
 
 class BusViewSet(
@@ -64,7 +69,7 @@ class TripViewSet(viewsets.ModelViewSet):
             queryset = (
                 queryset
                 .select_related()
-                .annotate(tickets_available=F("bus__num_seats") - Count("tickets_taken"))
+                .annotate(tickets_available=F("bus__num_seats") - Count("tickets"))
             )
         elif self.action == "retrieve":
             queryset = queryset.select_related()

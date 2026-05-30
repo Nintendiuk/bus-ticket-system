@@ -48,7 +48,7 @@ class TripListSerializer(serializers.ModelSerializer):
                   "destination",
                   "departure",
                   "bus_info",
-                  "bus_num_seats"
+                  "bus_num_seats",
                   "tickets_available"
                   )
 
