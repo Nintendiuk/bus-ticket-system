@@ -13,24 +13,25 @@ class Facility(models.Model):
     class Meta:
         verbose_name_plural = "facilities"
 
-
     def __str__(self):
         return self.name
 
+
 def bus_image_path(instance: "Bus", filename: str) -> pathlib.Path:
-    filename = f"{slugify(instance.info)}--{uuid.uuid4()}" + pathlib.Path(filename).suffix
+    filename = (
+        f"{slugify(instance.info)}--{uuid.uuid4()}" + pathlib.Path(filename).suffix
+    )
     return pathlib.Path("upload/buses/") / pathlib.Path(filename)
 
 
 class Bus(models.Model):
     info = models.CharField(max_length=255, null=True)
     num_seats = models.IntegerField()
-    facilities = models.ManyToManyField(Facility, related_name="buses")
+    facilities = models.ManyToManyField(Facility, related_name="buses", blank=True)
     image = models.ImageField(null=True, upload_to=bus_image_path)
 
     class Meta:
         verbose_name_plural = "buses"
-
 
     @property
     def is_small(self):
@@ -72,9 +73,7 @@ class Ticket(models.Model):
     def validate_seat(seat: int, num_seats: int, error_to_raise):
         if not (1 <= seat <= num_seats):
             raise error_to_raise(
-                {
-                    "seat": f"seat must be in range [1, {num_seats}], not {seat}"
-                }
+                {"seat": f"seat must be in range [1, {num_seats}], not {seat}"}
             )
 
     def clean(self):

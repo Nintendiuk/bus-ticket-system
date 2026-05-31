@@ -27,9 +27,7 @@ class BusImageSerializer(serializers.ModelSerializer):
 
 class BusListSerializer(BusSerializer):
     facilities = serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field="name"
+        many=True, read_only=True, slug_field="name"
     )
 
 
@@ -51,14 +49,15 @@ class TripListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Trip
-        fields = ("id",
-                  "source",
-                  "destination",
-                  "departure",
-                  "bus_info",
-                  "bus_num_seats",
-                  "tickets_available"
-                  )
+        fields = (
+            "id",
+            "source",
+            "destination",
+            "departure",
+            "bus_info",
+            "bus_num_seats",
+            "tickets_available",
+        )
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -68,30 +67,28 @@ class TicketSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         Ticket.validate_seat(
-            attrs["seat"],
-            attrs["trip"].bus.num_seats,
-            serializers.ValidationError
+            attrs["seat"], attrs["trip"].bus.num_seats, serializers.ValidationError
         )
 
 
 class TripRetriveSerializer(TripListSerializer):
     bus = BusRetrieveSerializer(many=False, read_only=True)
-    taken_seats = (serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field="seat",
-        source="tickets"
-    ))
+    taken_seats = serializers.SlugRelatedField(
+        many=True, read_only=True, slug_field="seat", source="tickets"
+    )
 
     class Meta:
         model = Trip
-        fields = ("id",
-                  "source",
-                  "destination",
-                  "departure",
-                  "bus_info",
-                  "bus_num_seats",
-                  "taken_seats")
+        fields = (
+            "id",
+            "bus",
+            "source",
+            "destination",
+            "departure",
+            "bus_info",
+            "bus_num_seats",
+            "taken_seats",
+        )
 
 
 class OrderSerializer(serializers.ModelSerializer):

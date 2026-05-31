@@ -1,31 +1,39 @@
 from django.db.models import Count, F
-from rest_framework import viewsets, status
-from rest_framework.authentication import TokenAuthentication
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 
 from station.models import Bus, Trip, Facility, Order
-from station.permissions import IsAdminAllORIsAuthenticatedOrReadOnly
-from station.serializers import (BusSerializer,
-                                 TripSerializer,
-                                 TripListSerializer,
-                                 BusListSerializer,
-                                 FacilitySerializer,
-                                 BusRetrieveSerializer,
-                                 TripRetriveSerializer, OrderSerializer, OrderListSerializer, BusImageSerializer)
+from station.serializers import (
+    BusSerializer,
+    TripSerializer,
+    TripListSerializer,
+    BusListSerializer,
+    FacilitySerializer,
+    BusRetrieveSerializer,
+    TripRetriveSerializer,
+    OrderSerializer,
+    OrderListSerializer,
+    BusImageSerializer,
+)
 
 
 class FacilityViewSet(viewsets.ModelViewSet):
     queryset = Facility.objects.all()
     serializer_class = FacilitySerializer
-    authentication_classes = (TokenAuthentication,)
-    permission_classes = (IsAdminAllORIsAuthenticatedOrReadOnly,)
 
 
 class BusViewSet(
-    viewsets.ModelViewSet):
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     queryset = Bus.objects.all()
     serializer_class = BusListSerializer
     parser_classes = (MultiPartParser, FormParser)
@@ -63,7 +71,7 @@ class BusViewSet(
         detail=True,
         permission_classes=[IsAdminUser],
         url_path="upload-image",
-        parser_classes=[MultiPartParser]
+        parser_classes=[MultiPartParser],
     )
     def upload_image(self, request, pk=None):
         bus = self.get_object()
@@ -72,6 +80,19 @@ class BusViewSet(
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "facilities",
+                type={"type": "array", "items": {"type": "number"}},
+                description="First by facility id (ex. ?facilities=2,3)",
+            )
+        ]
+    )
+
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 class TripViewSet(viewsets.ModelViewSet):
@@ -84,14 +105,11 @@ class TripViewSet(viewsets.ModelViewSet):
             return TripRetriveSerializer
         return TripSerializer
 
-
     def get_queryset(self):
         queryset = self.queryset
         if self.action == "list":
-            queryset = (
-                queryset
-                .select_related()
-                .annotate(tickets_available=F("bus__num_seats") - Count("tickets"))
+            queryset = queryset.select_related().annotate(
+                tickets_available=F("bus__num_seats") - Count("tickets")
             )
         elif self.action == "retrieve":
             queryset = queryset.select_related()
