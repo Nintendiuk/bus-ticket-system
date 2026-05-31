@@ -17,6 +17,14 @@ class BusSerializer(serializers.ModelSerializer):
         fields = ("id", "info", "num_seats", "is_small", "facilities")
 
 
+class BusImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=True)
+
+    class Meta:
+        model = Bus
+        fields = ("id", "image")
+
+
 class BusListSerializer(BusSerializer):
     facilities = serializers.SlugRelatedField(
         many=True,

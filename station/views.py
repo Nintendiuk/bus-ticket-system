@@ -1,7 +1,10 @@
 from django.db.models import Count, F
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, status
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
 
 from station.models import Bus, Trip, Facility, Order
 from station.permissions import IsAdminAllORIsAuthenticatedOrReadOnly
@@ -11,7 +14,7 @@ from station.serializers import (BusSerializer,
                                  BusListSerializer,
                                  FacilitySerializer,
                                  BusRetrieveSerializer,
-                                 TripRetriveSerializer, OrderSerializer, OrderListSerializer)
+                                 TripRetriveSerializer, OrderSerializer, OrderListSerializer, BusImageSerializer)
 
 
 class FacilityViewSet(viewsets.ModelViewSet):
@@ -25,6 +28,7 @@ class BusViewSet(
     viewsets.ModelViewSet):
     queryset = Bus.objects.all()
     serializer_class = BusListSerializer
+    parser_classes = (MultiPartParser, FormParser)
 
     @staticmethod
     def _params_to_ints(query_string):
@@ -35,6 +39,9 @@ class BusViewSet(
             return BusListSerializer
         elif self.action == "retrieve":
             return BusRetrieveSerializer
+        elif self.action == "upload_image":
+            return BusImageSerializer
+
         return BusSerializer
 
     def get_queryset(self):
@@ -50,6 +57,21 @@ class BusViewSet(
             return queryset.prefetch_related("facilities")
 
         return queryset.distinct()
+
+    @action(
+        methods=["GET", "POST"],
+        detail=True,
+        permission_classes=[IsAdminUser],
+        url_path="upload-image",
+        parser_classes=[MultiPartParser]
+    )
+    def upload_image(self, request, pk=None):
+        bus = self.get_object()
+        serializer = self.get_serializer(bus, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TripViewSet(viewsets.ModelViewSet):
